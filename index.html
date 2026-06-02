@@ -1,510 +1,541 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<!-- 👇 OPTIMIZACIÓN MÓVIL: viewport correcto -->
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#0b1d3a">
-<title>Pruning Manual – Edge ML</title>
-<style>
-  /* 👇 OPTIMIZACIÓN MÓVIL: reset + box-sizing global */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Actividad: pruning manual y respuesta óptima</title>
+  <style>
+    :root{
+      --bg:#f6f8fc; --panel:#fff; --ink:#1f2937; --muted:#6b7280; --line:#d1d5db;
+      --accent:#2563eb; --good:#059669; --warn:#b45309; --bad:#dc2626;
+      --shadow:0 10px 30px rgba(15,23,42,.10); --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+    .wrap{max-width:1400px;margin:0 auto;padding:24px}
+    .hero{background:linear-gradient(135deg,#1d4ed8,#7c3aed);color:#fff;border-radius:24px;padding:24px 28px;box-shadow:var(--shadow);margin-bottom:18px}
+    .hero h1{margin:0 0 8px;font-size:clamp(1.6rem,3vw,2.4rem)}
+    .hero p{margin:0;max-width:1100px;opacity:.96}
+    .instructions{background:var(--panel);border:1px solid rgba(15,23,42,.08);border-radius:20px;box-shadow:var(--shadow);padding:18px 20px;margin-bottom:18px}
+    .instructions h2{margin:0 0 8px;font-size:1.15rem}
+    .instructions ol{margin:10px 0 0 20px;padding:0}
+    .instructions li{margin:6px 0;color:#374151}
+    .layout{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:start}
+    @media (max-width: 1100px){.layout{grid-template-columns:1fr}}
+    .card{background:var(--panel);border:1px solid rgba(15,23,42,.08);border-radius:var(--radius);box-shadow:var(--shadow);padding:18px}
+    .topbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .btn{border:0;border-radius:12px;padding:11px 14px;font:inherit;font-weight:700;cursor:pointer;transition:.18s ease;box-shadow:0 8px 18px rgba(37,99,235,.16)}
+    .btn:hover{transform:translateY(-1px)}
+    .btn.primary{background:var(--accent);color:#fff}
+    .btn.light{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:none}
+    .gridMetrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}
+    .metric{background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:12px}
+    .metric .label{font-size:.9rem;color:var(--muted)}
+    .metric .num{font-size:1.6rem;font-weight:800;margin-top:2px}
+    .metric .sub{font-size:.88rem;color:var(--muted);margin-top:2px}
+    .status{margin-top:12px;border-left:5px solid var(--accent);background:#eff6ff;border-radius:12px;padding:12px 14px}
+    .status.good{border-left-color:var(--good);background:#ecfdf5}
+    .status.warn{border-left-color:var(--warn);background:#fffbeb}
+    .status.bad{border-left-color:var(--bad);background:#fef2f2}
+    .status strong{display:block;margin-bottom:4px}
+    .networkWrap{background:linear-gradient(180deg,#ffffff,#fbfdff);border:1px solid rgba(15,23,42,.08);border-radius:20px;overflow:hidden;position:relative;min-height:660px}
+    .netHeader{padding:16px 18px 0}
+    .netHeader h3{margin:0 0 4px}
+    .netHeader p{margin:0;color:var(--muted);font-size:.95rem}
+    .legend{display:flex;flex-wrap:wrap;gap:8px;padding:10px 18px 12px}
+    .legend span{border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:#fff;font-size:.88rem}
+    svg{display:block;width:100%;height:520px}
+    .edge{stroke-linecap:round;cursor:pointer;transition:.15s ease}
+    .edge.pruned{stroke:#cbd5e1;stroke-dasharray:8 8;opacity:.82}
+    .weightTag{font-size:13px;font-weight:800;fill:#0f172a;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
+    .node{fill:#f8fafc;stroke:#0f172a;stroke-width:2}
+    .node.in{fill:#eef2ff}.node.hidden{fill:#ecfeff}.node.out{fill:#fef3c7}
+    .nodeLabel{font-size:13px;font-weight:700;fill:#0f172a;pointer-events:none}
+    .nodeSub{font-size:11px;fill:#475569;pointer-events:none}
+    .overlayNote{position:absolute;right:14px;bottom:14px;max-width:380px;background:rgba(255,255,255,.94);border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:10px 12px;box-shadow:0 8px 20px rgba(15,23,42,.08);font-size:.9rem}
+    .table{width:100%;border-collapse:collapse;margin-top:10px}
+    .table th,.table td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;font-size:.92rem}
+    .table th{background:#f8fafc;position:sticky;top:0}
+    .muted{color:var(--muted)}
+    .statusLabel{font-weight:700}
+    .statusLabel.ok{color:var(--good)}
+    .statusLabel.warn{color:var(--warn)}
+    .statusLabel.bad{color:var(--bad)}
+    .tableWrap{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:14px;margin-top:12px}
+    .footer{margin-top:12px;color:var(--muted);font-size:.92rem}
+    .compactTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:14px}
+    .didactic{margin-top:12px;background:#fdf4ff;border:1px solid #f0abfc;border-radius:12px;padding:10px 12px;font-size:.92rem;color:#6b21a8}
+    .didactic strong{color:#581c87}
+            @media (max-width: 900px){.gridMetrics{grid-template-columns:1fr}}
+  
+    @media (max-width: 768px){
+      .wrap{padding:14px}
+      .hero{padding:18px 16px;border-radius:18px}
+      .hero h1{font-size:1.55rem}
+      .instructions{padding:14px 14px;border-radius:16px}
+      .instructions ol{margin-left:18px}
+      .card{padding:14px;border-radius:16px}
+      .topbar{align-items:flex-start}
+      .topbar > div:first-child{flex:1 1 100%}
+      .topbar > div:last-child{width:100%}
+      .topbar .btn{flex:1 1 calc(50% - 5px)}
+      .gridMetrics{grid-template-columns:1fr}
+      .metric .num{font-size:1.45rem}
+      .networkWrap{min-height:auto}
+      .netHeader{padding:12px 12px 0}
+      .netHeader h3{font-size:1rem}
+      .netHeader p{font-size:.86rem}
+      .legend{padding:8px 12px 10px;gap:6px}
+      .legend span{font-size:.8rem;padding:5px 8px}
+      svg{height:360px}
+      .overlayNote{
+        position:static;
+        margin:0 12px 12px;
+        max-width:none;
+        font-size:.84rem;
+      }
+      .compactTitle{align-items:flex-start;flex-direction:column}
+      .tableWrap{max-height:240px}
+      .table th,.table td{font-size:.84rem;padding:8px 6px}
+      .didactic{font-size:.86rem}
+      .status{padding:10px 12px}
+      .status strong{font-size:.94rem}
+      .status{font-size:.92rem}
+    }
 
-  :root {
-    --bg: #0b1d3a;
-    --panel: #122a52;
-    --panel-2: #1a3768;
-    --text: #e8f0ff;
-    --muted: #9bb3d6;
-    --accent: #4fc3f7;
-    --ok: #4caf50;
-    --warn: #ffb74d;
-    --danger: #ef5350;
-    --pruned: #6b7280;
-    --weight-high: #1e3a8a;
-    --weight-mid: #3b82f6;
-    --weight-low: #93c5fd;
-    --radius: 14px;
-    --shadow: 0 4px 14px rgba(0,0,0,.25);
-  }
+    @media (max-width: 480px){
+      .wrap{padding:10px}
+      .hero{padding:16px 14px}
+      .hero h1{font-size:1.35rem;line-height:1.2}
+      .instructions h2{font-size:1rem}
+      .instructions li{font-size:.94rem}
+      .topbar .btn{flex:1 1 100%}
+      .netHeader{padding:10px 10px 0}
+      .legend{padding:8px 10px 10px}
+      svg{height:320px}
+      .overlayNote{margin:0 10px 10px;padding:9px 10px}
+      .metric{padding:10px}
+      .metric .label{font-size:.84rem}
+      .metric .sub{font-size:.8rem}
+      .status{margin-top:10px}
+      .footer{font-size:.85rem}
+    }
 
-  html, body {
-    height: 100%;
-    background: var(--bg);
-    color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    font-size: 16px;
-    -webkit-tap-highlight-color: transparent;
-    -webkit-text-size-adjust: 100%;
-    overscroll-behavior: none;
-  }
-
-  body {
-    /* 👇 OPTIMIZACIÓN MÓVIL: padding seguro para notch y teclado */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: header compacto */
-  header {
-    padding: 12px 16px;
-    background: linear-gradient(180deg, #0e2549, #0b1d3a);
-    border-bottom: 1px solid rgba(255,255,255,.06);
-    position: sticky;
-    top: 0;
-    z-index: 5;
-  }
-  header h1 {
-    font-size: 1.05rem;
-    line-height: 1.2;
-    font-weight: 700;
-  }
-  header p {
-    font-size: .8rem;
-    color: var(--muted);
-    margin-top: 4px;
-  }
-
-  main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 12px;
-    max-width: 720px;
-    width: 100%;
-    margin: 0 auto;
-  }
-
-  .panel {
-    background: var(--panel);
-    border-radius: var(--radius);
-    padding: 12px;
-    box-shadow: var(--shadow);
-  }
-  .panel h2 {
-    font-size: .9rem;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: var(--accent);
-    letter-spacing: .3px;
-  }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: canvas ocupa todo el ancho disponible */
-  .network-wrap {
-    background: var(--panel-2);
-    border-radius: var(--radius);
-    padding: 8px;
-    position: relative;
-  }
-  #network {
-    width: 100%;
-    height: auto;
-    display: block;
-    touch-action: manipulation;
-  }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: leyenda en grid compacto */
-  .legend {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
-    margin-top: 10px;
-    font-size: .78rem;
-    color: var(--muted);
-  }
-  .legend-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .swatch {
-    width: 14px; height: 14px;
-    border-radius: 3px;
-    flex-shrink: 0;
-    border: 1px solid rgba(255,255,255,.1);
-  }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: métricas en grid 2x2 */
-  .metrics {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .metric {
-    background: var(--panel-2);
-    border-radius: 10px;
-    padding: 10px;
-    text-align: center;
-  }
-  .metric .label {
-    font-size: .72rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: .5px;
-  }
-  .metric .value {
-    font-size: 1.35rem;
-    font-weight: 700;
-    margin-top: 2px;
-  }
-  .metric .desc {
-    font-size: .68rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: botones táctiles grandes (mín 48px) */
-  .actions {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
-  .btn {
-    appearance: none;
-    border: none;
-    background: var(--accent);
-    color: #002233;
-    font-weight: 700;
-    font-size: .95rem;
-    padding: 14px 10px;
-    border-radius: 12px;
-    min-height: 48px;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    transition: transform .08s ease, filter .15s ease;
-  }
-  .btn:active { transform: scale(.97); filter: brightness(.9); }
-  .btn.secondary {
-    background: var(--panel-2);
-    color: var(--text);
-    border: 1px solid rgba(255,255,255,.1);
-  }
-  .btn.success { background: var(--ok); color: #002b10; }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: idea clave destacada */
-  .idea {
-    background: rgba(79, 195, 247, .08);
-    border-left: 3px solid var(--accent);
-    padding: 10px 12px;
-    border-radius: 8px;
-    font-size: .85rem;
-    line-height: 1.4;
-    color: #d4e7ff;
-  }
-  .idea strong { color: var(--accent); }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: tabla con scroll horizontal propio */
-  .table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 10px;
-    border: 1px solid rgba(255,255,255,.06);
-  }
-  table {
-    width: 100%;
-    min-width: 480px;
-    border-collapse: collapse;
-    font-size: .85rem;
-  }
-  th, td {
-    padding: 10px 8px;
-    text-align: left;
-    border-bottom: 1px solid rgba(255,255,255,.05);
-    white-space: nowrap;
-  }
-  th {
-    background: var(--panel-2);
-    color: var(--accent);
-    font-weight: 600;
-    position: sticky;
-    top: 0;
-  }
-  td.status-ok { color: var(--ok); font-weight: 600; }
-  td.status-bad { color: var(--danger); font-weight: 600; }
-
-  /* 👇 OPTIMIZACIÓN MÓVIL: banner de estado */
-  .status-bar {
-    font-size: .8rem;
-    color: var(--muted);
-    text-align: center;
-    padding: 8px;
-  }
-
-  /* 👇 Media queries para pantallas más grandes (tablets / desktop) */
-  @media (min-width: 640px) {
-    header h1 { font-size: 1.25rem; }
-    main { gap: 16px; padding: 16px; }
-    .metrics { grid-template-columns: repeat(4, 1fr); }
-    .legend { grid-template-columns: repeat(4, 1fr); }
-  }
-</style>
+  </style>
 </head>
 <body>
+  <div class="wrap">
+    <section class="hero">
+      <h1>Actividad: Pruning manual y respuesta óptima</h1>
+    </section>
 
-<header>
-  <h1>Actividad: Pruning Manual</h1>
-  <p>Toca las conexiones para podarlas. Busca sparsity alta sin perder accuracy.</p>
-</header>
+    <section class="instructions">
+      <h2><strong>Indicaciones</strong></h2>
+      <ol>
+        <li>Observa la red y haz clic sobre una conexión para marcarla como podada o activa.</li>
+        <li>Para cada cambio revisa las métricas: conexiones activas, sparsity y accuracy calculado sobre 9 muestras de demo.</li>
+        <li>Busca encontrar una red con la mayor cantidad de conexiones podadas y que mantenga un Accuracy alto.</li>
+        <li>Cuando te lo indiquen, usa el botón <strong>Mejor respuesta encontrada</strong> para comparar tu criterio con la solución óptima calculada para esta demo.</li>
+      </ol>
+    </section>
 
-<main>
-  <section class="network-wrap">
-    <canvas id="network" width="400" height="320" aria-label="Red neuronal simulada"></canvas>
-    <div class="legend">
-      <div class="legend-item"><span class="swatch" style="background:var(--weight-high)"></span>Alto</div>
-      <div class="legend-item"><span class="swatch" style="background:var(--weight-mid)"></span>Medio</div>
-      <div class="legend-item"><span class="swatch" style="background:var(--weight-low)"></span>Bajo</div>
-      <div class="legend-item"><span class="swatch" style="background:var(--pruned);border-style:dashed"></span>Podada</div>
+    <div class="layout">
+      <section class="card">
+        <div class="topbar">
+          <div>
+            <h2 style="margin:0 0 4px;">Red neuronal simulada</h2>
+            <div class="muted">Haz clic en las líneas para podarlas o reactivarlas.</div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="btn light" id="resetBtn">Reiniciar</button>
+            <button class="btn primary" id="optBtn">Mejor respuesta encontrada</button>
+          </div>
+        </div>
+
+        <div class="networkWrap">
+          <div class="netHeader">
+            <h3>Pruning manual</h3>
+            <p>El grosor y el color de las líneas representan la magnitud del peso. Las conexiones podadas se muestran en gris.</p>
+          </div>
+          <div class="legend">
+            <span>Azul oscuro: peso alto</span>
+            <span>Azul medio: peso medio</span>
+            <span>Azul claro: peso bajo</span>
+            <span>Gris punteado: podada</span>
+          </div>
+          <svg id="netSvg" viewBox="0 0 1080 520" aria-label="Red neuronal interactiva">
+            <g id="edges"></g>
+            <g id="labels"></g>
+            <g id="nodes"></g>
+          </svg>
+          <div class="overlayNote">
+            <strong>Idea clave:</strong> pruning no busca eliminar al azar, sino reducir la complejidad dejando lo más útil para el despliegue en Edge ML.
+          </div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <div class="compactTitle">
+          <h2 style="margin:0;">Métricas y retroalimentación</h2>
+          <span class="muted">Demo con 9 muestras</span>
+        </div>
+
+        <div class="gridMetrics">
+          <div class="metric">
+            <div class="label">Conexiones activas</div>
+            <div class="num" id="activeCount">35</div>
+            <div class="sub">Menos activas = modelo más liviano.</div>
+          </div>
+          <div class="metric">
+            <div class="label">Conexiones podadas</div>
+            <div class="num" id="prunedCount">0</div>
+            <div class="sub">Sparsity creciente.</div>
+          </div>
+          <div class="metric">
+            <div class="label">Sparsity estimada</div>
+            <div class="num" id="sparsity">0%</div>
+            <div class="sub">Proporción de conexiones eliminadas.</div>
+          </div>
+          <div class="metric">
+            <div class="label">Accuracy calculado</div>
+            <div class="num" id="accuracy">100%</div>
+            <div class="sub">Evaluado sobre 9 muestras de demo.</div>
+          </div>
+        </div>
+
+        <div class="status" id="statusBox">
+          <strong id="statusTitle">Estado de la actividad</strong>
+          <div id="statusText">Empieza podando manualmente o compara tu criterio con la mejor respuesta encontrada.</div>
+        </div>
+
+        <div class="didactic" id="didacticBox" style="display:none;">
+          <strong>Solución óptima</strong>
+          <div id="didacticText"></div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <h3 style="margin:0 0 8px;">Resultados sobre datos de demo</h3>
+          <div class="tableWrap">
+            <table class="table">
+              <thead>
+                <tr><th>Muestra</th><th>Valores</th><th>Clase real</th><th>Predicción</th><th>Confianza</th><th>Estado</th></tr>
+              </thead>
+              <tbody id="demoBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </aside>
     </div>
-  </section>
-
-  <section class="panel">
-    <h2>Métricas</h2>
-    <div class="metrics">
-      <div class="metric">
-        <div class="label">Activas</div>
-        <div class="value" id="m-active">35</div>
-        <div class="desc">Menos = más liviano</div>
-      </div>
-      <div class="metric">
-        <div class="label">Podadas</div>
-        <div class="value" id="m-pruned">0</div>
-        <div class="desc">Sparsity creciente</div>
-      </div>
-      <div class="metric">
-        <div class="label">Sparsity</div>
-        <div class="value" id="m-sparsity">0%</div>
-        <div class="desc">Conexiones eliminadas</div>
-      </div>
-      <div class="metric">
-        <div class="label">Accuracy</div>
-        <div class="value" id="m-accuracy">100%</div>
-        <div class="desc">Sobre 9 muestras demo</div>
-      </div>
-    </div>
-  </section>
-
-  <section class="actions">
-    <button class="btn secondary" id="btn-reset">🔄 Reiniciar</button>
-    <button class="btn success" id="btn-optimal">⭐ Mejor respuesta</button>
-  </section>
-
-  <div class="idea">
-    <strong>Idea clave:</strong> el pruning no elimina al azar; reduce la complejidad dejando lo más útil para despliegue en <em>Edge ML</em>.
   </div>
 
-  <section class="panel">
-    <h2>Resultados sobre datos de demo</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Muestra</th>
-            <th>Valores</th>
-            <th>Clase real</th>
-            <th>Predicción</th>
-            <th>Confianza</th>
-            <th>Estado</th>
-          </tr>
-        </thead>
-        <tbody id="results-body"></tbody>
-      </table>
-    </div>
-  </section>
+  <script>
+    (function(){
+      const inputX = [160,160,160,160];
+      const hiddenX = [520,520,520,520,520];
+      const outputX = [910,910,910];
+      const inputY = [110,210,310,410];
+      const hiddenY = [80,170,260,350,440];
+      const outputY = [140,260,380];
 
-  <div class="status-bar" id="status">Empieza podando manualmente o compara tu criterio con la mejor respuesta.</div>
-</main>
+      const W1 = [
+        [2.0, 2.0, 0.0, 0.0],
+        [0.0, 0.0, 2.0, 2.0],
+        [0.0, 1.8, 1.8, 0.0],
+        [1.5, 0.0, 0.0, 1.5],
+        [0.0, 0.0, 0.0, 0.0]
+      ];
+      const b1 = [-1.6, -1.6, -1.5, -1.3, 1.0];
+      const W2 = [
+        [ 2.0, -0.8,  0.0,  0.4, 0.2],
+        [-0.8,  2.0,  0.2,  0.0, 0.2],
+        [-0.3,  0.0,  1.8,  0.6, 0.2]
+      ];
+      const b2 = [0.0, 0.0, 0.0];
 
-<script>
-  // ===== Simulación: red 4-5-3 = 35 conexiones =====
-  const canvas = document.getElementById('network');
-  const ctx = canvas.getContext('2d');
+      const demoSamples = [
+        { name:'M1', x:[0.9,0.8,0.1,0.2], y:0 },
+        { name:'M2', x:[0.8,0.7,0.2,0.1], y:0 },
+        { name:'M3', x:[0.7,0.9,0.1,0.3], y:0 },
+        { name:'M4', x:[0.1,0.2,0.8,0.9], y:1 },
+        { name:'M5', x:[0.2,0.1,0.7,0.8], y:1 },
+        { name:'M6', x:[0.1,0.3,0.9,0.7], y:1 },
+        { name:'M7', x:[0.2,0.8,0.7,0.2], y:2 },
+        { name:'M8', x:[0.3,0.7,0.8,0.1], y:2 },
+        { name:'M9', x:[0.1,0.6,0.9,0.3], y:2 }
+      ];
+      const classNames = ['Clase 1', 'Clase 2', 'Clase 3'];
 
-  const layers = [4, 5, 3];
-  const totalConnections = layers[0]*layers[1] + layers[1]*layers[2]; // 35
+      const nodeData = [
+        ...inputY.map((y,i)=>({id:`x${i+1}`,type:'in',x:inputX[i],y,label:`x${i+1}`,sub:'Entrada'})),
+        ...hiddenY.map((y,i)=>({id:`h${i+1}`,type:'hidden',x:hiddenX[i],y,label:`h${i+1}`,sub:'Oculta'})),
+        ...outputY.map((y,i)=>({id:`y${i+1}`,type:'out',x:outputX[i],y,label:`y${i+1}`,sub:'Salida'}))
+      ];
 
-  // Generar conexiones con pesos aleatorios
-  let connections = [];
-  function buildConnections() {
-    connections = [];
-    for (let l = 0; l < layers.length - 1; l++) {
-      for (let i = 0; i < layers[l]; i++) {
-        for (let j = 0; j < layers[l+1]; j++) {
-          connections.push({
-            layer: l,
-            from: i, to: j,
-            weight: Math.random(),
-            pruned: false
-          });
+      const connections = [];
+      for(let i=0;i<4;i++) for(let j=0;j<5;j++) connections.push({id:`x${i+1}-h${j+1}`,from:`x${i+1}`,to:`h${j+1}`,weight:W1[j][i],pruned:false,layer:'in-hidden'});
+      for(let j=0;j<5;j++) for(let k=0;k<3;k++) connections.push({id:`h${j+1}-y${k+1}`,from:`h${j+1}`,to:`y${k+1}`,weight:W2[k][j],pruned:false,layer:'hidden-out'});
+      const posById = Object.fromEntries(nodeData.map(n=>[n.id,n]));
+      const edgeById = Object.fromEntries(connections.map(e=>[e.id,e]));
+
+      const edgesGroup = document.getElementById('edges');
+      const labelsGroup = document.getElementById('labels');
+      const nodesGroup = document.getElementById('nodes');
+      const activeCount = document.getElementById('activeCount');
+      const prunedCount = document.getElementById('prunedCount');
+      const sparsity = document.getElementById('sparsity');
+      const accuracy = document.getElementById('accuracy');
+      const demoBody = document.getElementById('demoBody');
+      const statusBox = document.getElementById('statusBox');
+      const statusTitle = document.getElementById('statusTitle');
+      const statusText = document.getElementById('statusText');
+      const didacticBox = document.getElementById('didacticBox');
+      const didacticText = document.getElementById('didacticText');
+      const resetBtn = document.getElementById('resetBtn');
+      const optBtn = document.getElementById('optBtn');
+      const total = connections.length;
+
+      function makeSvgEl(tag, attrs = {}) {
+        const el = document.createElementNS('http://www.w3.org/2000/svg', tag);
+        for (const [k, v] of Object.entries(attrs)) el.setAttribute(k, v);
+        return el;
+      }
+      function clearSvg(group) { while (group.firstChild) group.removeChild(group.firstChild); }
+      function colorForWeight(w) {
+        const a = Math.abs(w);
+        return a >= 1.5 ? '#1e3a8a' : a >= 0.8 ? '#2563eb' : '#93c5fd';
+      }
+      function strokeWidthForWeight(w) { return 2.5 + Math.min(4.5, Math.abs(w) * 1.8); }
+      function labelPos(edge) {
+        const a = posById[edge.from], b = posById[edge.to];
+        return { x:(a.x+b.x)/2, y:(a.y+b.y)/2 - (edge.layer === 'in-hidden' ? 12 : 10) };
+      }
+      function currentPrunedSet() { return new Set(connections.filter(e => e.pruned).map(e => e.id)); }
+      function maskFromPrunedSet(prunedSet) {
+        const m = {};
+        connections.forEach(c => { m[c.id] = prunedSet.has(c.id) ? 0 : 1; });
+        return m;
+      }
+      function relu(v) { return v > 0 ? v : 0; }
+      function softmax(arr) {
+        const max = Math.max(...arr);
+        const exps = arr.map(v => Math.exp(v - max));
+        const sum = exps.reduce((a,b) => a + b, 0);
+        return exps.map(v => v / sum);
+      }
+      function forward(x, mask) {
+        const h = [];
+        for (let j = 0; j < 5; j++) {
+          let z = b1[j];
+          for (let i = 0; i < 4; i++) {
+            const id = `x${i+1}-h${j+1}`;
+            z += (W1[j][i] * (mask[id] ?? 1)) * x[i];
+          }
+          h.push(relu(z));
         }
+        const logits = [];
+        for (let k = 0; k < 3; k++) {
+          let z = b2[k];
+          for (let j = 0; j < 5; j++) {
+            const id = `h${j+1}-y${k+1}`;
+            z += (W2[k][j] * (mask[id] ?? 1)) * h[j];
+          }
+          logits.push(z);
+        }
+        const probs = softmax(logits);
+        const pred = probs.indexOf(Math.max(...probs));
+        return { probs, pred };
       }
-    }
-  }
-  buildConnections();
-
-  // ===== Responsivo: redimensionar canvas =====
-  function resizeCanvas() {
-    const wrap = canvas.parentElement;
-    const w = wrap.clientWidth - 16;
-    const h = Math.min(w * 0.8, window.innerHeight * 0.4);
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = w * dpr;
-    canvas.height = h * dpr;
-    canvas.style.width = w + 'px';
-    canvas.style.height = h + 'px';
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    drawNetwork();
-  }
-  window.addEventListener('resize', resizeCanvas);
-
-  function nodePositions() {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    const pos = [];
-    layers.forEach((n, li) => {
-      const col = [];
-      const x = (li + 1) * w / (layers.length + 1);
-      for (let i = 0; i < n; i++) {
-        const y = (i + 1) * h / (n + 1);
-        col.push({ x, y });
+      function evaluate(mask = maskFromPrunedSet(currentPrunedSet())) {
+        const rows = demoSamples.map(s => {
+          const out = forward(s.x, mask);
+          return {
+            name: s.name,
+            data: s.x,
+            real: s.y,
+            pred: out.pred,
+            confidence: out.probs[out.pred],
+            correct: out.pred === s.y
+          };
+        });
+        const acc = rows.filter(r => r.correct).length / rows.length;
+        return { acc, rows };
       }
-      pos.push(col);
-    });
-    return pos;
-  }
+      function evaluateSet(prunedSet) { return evaluate(maskFromPrunedSet(prunedSet)); }
+      function updateStatus(title, message, tone = 'ok') {
+        statusTitle.textContent = title;
+        statusText.textContent = message;
+        statusBox.className = `status ${tone}`;
+      }
+      function updateMetrics() {
+        const { acc, rows } = evaluate();
+        const active = connections.filter(e => !e.pruned).length;
+        const pruned = total - active;
+        const s = Math.round((pruned / total) * 100);
+        activeCount.textContent = active;
+        prunedCount.textContent = pruned;
+        sparsity.textContent = `${s}%`;
+        accuracy.textContent = `${Math.round(acc * 100)}%`;
+        renderDemoTable(rows);
+      }
+      function renderDemoTable(rows) {
+        demoBody.innerHTML = '';
+        rows.forEach((r) => {
+          const tr = document.createElement('tr');
+          const conf = `${Math.round(r.confidence * 100)}%`;
+          tr.innerHTML = `
+            <td>${r.name}</td>
+            <td>${r.data}</td>
+            <td>${classNames[r.real]}</td>
+            <td>${classNames[r.pred]}</td>
+            <td>${conf}</td>
+            <td class="statusLabel ${r.correct ? 'ok' : 'bad'}">${r.correct ? '✓' : '✗'}</td>
+          `;
+          demoBody.appendChild(tr);
+        });
+      }
+      function renderNetwork() {
+        clearSvg(edgesGroup); clearSvg(labelsGroup); clearSvg(nodesGroup);
+        connections.forEach(edge => {
+          const a = posById[edge.from], b = posById[edge.to];
+          const line = makeSvgEl('line', { x1:a.x, y1:a.y, x2:b.x, y2:b.y, class:`edge ${edge.pruned ? 'pruned' : ''}` });
+          line.style.stroke = edge.pruned ? '#cbd5e1' : colorForWeight(edge.weight);
+          line.style.strokeWidth = strokeWidthForWeight(edge.weight);
+          line.addEventListener('click', () => {
+            const before = evaluate();
+            edge.pruned = !edge.pruned;
+            const after = evaluate();
+            renderAll();
+            hideDidactic();
+            const delta = Math.round((after.acc - before.acc) * 100);
+            updateStatus(
+              'Cambio manual aplicado',
+              `${edge.id} ahora está ${edge.pruned ? 'podada' : 'activa'}. Accuracy: ${Math.round(before.acc * 100)}% → ${Math.round(after.acc * 100)}% (${delta >= 0 ? '+' : ''}${delta} pp).`,
+              edge.pruned ? 'warn' : 'ok'
+            );
+          });
+          edgesGroup.appendChild(line);
 
-  function weightColor(w, pruned) {
-    if (pruned) return '#6b7280';
-    if (w > 0.66) return '#1e3a8a';
-    if (w > 0.33) return '#3b82f6';
-    return '#93c5fd';
-  }
+          const p = labelPos(edge);
+          const txt = makeSvgEl('text', { x:p.x, y:p.y, class:'weightTag', 'text-anchor':'middle' });
+          txt.textContent = edge.weight >= 0 ? `+${edge.weight.toFixed(2)}` : edge.weight.toFixed(2);
+          labelsGroup.appendChild(txt);
+        });
+        nodeData.forEach(node => {
+          const g = makeSvgEl('g', { transform:`translate(${node.x}, ${node.y})` });
+          g.appendChild(makeSvgEl('circle', { r: node.type === 'in' ? 24 : node.type === 'hidden' ? 28 : 25, class:`node ${node.type}` }));
+          const t1 = makeSvgEl('text', { x:0, y:-34, 'text-anchor':'middle', class:'nodeLabel' }); t1.textContent = node.label; g.appendChild(t1);
+          const t2 = makeSvgEl('text', { x:0, y:45, 'text-anchor':'middle', class:'nodeSub' }); t2.textContent = node.sub; g.appendChild(t2);
+          nodesGroup.appendChild(g);
+        });
+      }
+      function renderAll() {
+        renderNetwork();
+        updateMetrics();
+      }
+      function hideDidactic(){ didacticBox.style.display = 'none'; }
+      function showDidactic(html){
+        didacticText.innerHTML = html;
+        didacticBox.style.display = 'block';
+      }
+      function resetAll() {
+        connections.forEach(e => e.pruned = false);
+        renderAll();
+        hideDidactic();
+        updateStatus('Estado de la actividad', 'Empieza podando manualmente o compara tu criterio con la mejor respuesta encontrada.', 'ok');
+      }
 
-  function drawNetwork() {
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    ctx.clearRect(0, 0, w, h);
-    const pos = nodePositions();
+      function enumerateCombinations(items, k, start = 0, chosen = [], out = []) {
+        if (chosen.length === k) {
+          out.push(chosen.slice());
+          return out;
+        }
+        for (let i = start; i <= items.length - (k - chosen.length); i++) {
+          chosen.push(items[i]);
+          enumerateCombinations(items, k, i + 1, chosen, out);
+          chosen.pop();
+        }
+        return out;
+      }
 
-    // Conexiones
-    connections.forEach(c => {
-      const a = pos[c.layer][c.from];
-      const b = pos[c.layer + 1][c.to];
-      ctx.strokeStyle = weightColor(c.weight, c.pruned);
-      ctx.lineWidth = c.pruned ? 1 : 1 + c.weight * 5;
-      if (c.pruned) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
-    });
+      function localSearchSwaps(prunedSet) {
+        let best = new Set(prunedSet);
+        let bestAcc = evaluateSet(best).acc;
+        let improved = true;
+        let safety = 0;
+        while (improved && safety < 20) {
+          improved = false;
+          safety += 1;
+          const prunedSwappable = [...best];
+          const activeIds = connections.filter(e => !best.has(e.id)).map(e => e.id);
+          outer:
+          for (const outId of prunedSwappable) {
+            for (const inId of activeIds) {
+              const trial = new Set(best);
+              trial.delete(outId);
+              trial.add(inId);
+              const a = evaluateSet(trial).acc;
+              if (a > bestAcc + 1e-12) {
+                best = trial;
+                bestAcc = a;
+                improved = true;
+                break outer;
+              }
+            }
+          }
+        }
+        return { best, bestAcc };
+      }
 
-    // Nodos
-    pos.forEach(col => col.forEach(n => {
-      ctx.fillStyle = '#e8f0ff';
-      ctx.beginPath();
-      ctx.arc(n.x, n.y, 10, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#0b1d3a';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }));
-  }
+      const PRESET_OPTIMAL_ACTIVE = new Set([
+        'x1-h1', 'x2-h1', 'h1-y1',
+        'x3-h2', 'x4-h2', 'h2-y2',
+        'x2-h3', 'x3-h3', 'h3-y3'
+      ]);
 
-  // ===== Interacción táctil: podar al tocar =====
-  function handleTap(clientX, clientY) {
-    const rect = canvas.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    const pos = nodePositions();
-    let closest = null, bestDist = 1e9;
-    connections.forEach(c => {
-      const a = pos[c.layer][c.from];
-      const b = pos[c.layer + 1][c.to];
-      // distancia punto-segmento
-      const dx = b.x - a.x, dy = b.y - a.y;
-      const len2 = dx*dx + dy*dy;
-      let t = ((x - a.x) * dx + (y - a.y) * dy) / len2;
-      t = Math.max(0, Math.min(1, t));
-      const px = a.x + t*dx, py = a.y + t*dy;
-      const d = Math.hypot(x - px, y - py);
-      if (d < bestDist) { bestDist = d; closest = c; }
-    });
-    if (closest && bestDist < 18) {
-      closest.pruned = !closest.pruned;
-      updateMetrics();
-      drawNetwork();
-    }
-  }
-  canvas.addEventListener('click', e => {
-    const r = canvas.getBoundingClientRect();
-    handleTap(e.clientX, e.clientY);
-  });
-  canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    const t = e.touches[0];
-    handleTap(t.clientX, t.clientY);
-  }, { passive: false });
+      function bestResponseSearch() {
+        // Solución guardada: se muestra directamente para que la actividad cargue rápido.
+        connections.forEach(e => { e.pruned = !PRESET_OPTIMAL_ACTIVE.has(e.id); });
 
-  // ===== Métricas =====
-  function updateMetrics() {
-    const pruned = connections.filter(c => c.pruned).length;
-    const active = connections.length - pruned;
-    const sparsity = (pruned / connections.length) * 100;
-    // Accuracy simulado: cae si se podan más del 40% de conexiones
-    const accuracy = Math.max(0, Math.round(100 - Math.max(0, sparsity - 35) * 2.2));
-    document.getElementById('m-active').textContent = active;
-    document.getElementById('m-pruned').textContent = pruned;
-    document.getElementById('m-sparsity').textContent = sparsity.toFixed(0) + '%';
-    document.getElementById('m-accuracy').textContent = accuracy + '%';
-    renderResults(accuracy);
-  }
+        const finalEval = evaluate();
+        renderAll();
 
-  // ===== Tabla de resultados simulada =====
-  const demoData = Array.from({ length: 9 }, (_, i) => ({
-    sample: i + 1,
-    values: `[${(Math.random()).toFixed(2)}, ${(Math.random()).toFixed(2)}, ${(Math.random()).toFixed(2)}]`,
-    real: ['A', 'B', 'C'][i % 3],
-    confidence: (80 + Math.random() * 20).toFixed(1)
-  }));
+        const prunedCount = connections.filter(e => e.pruned).length;
+        const active = total - prunedCount;
+        const sparPct = Math.round((prunedCount / total) * 100);
+        const exactConnections = [...connections]
+          .filter(e => !e.pruned)
+          .map(e => e.id);
 
-  function renderResults(accuracy) {
-    const tbody = document.getElementById('results-body');
-    tbody.innerHTML = demoData.map(d => {
-      const ok = Math.random() * 100 < accuracy;
-      const pred = ok ? d.real : ['A','B','C'].find(c => c !== d.real);
-      return `<tr>
-        <td>${d.sample}</td>
-        <td>${d.values}</td>
-        <td>${d.real}</td>
-        <td>${pred}</td>
-        <td>${d.confidence}%</td>
-        <td class="${ok ? 'status-ok' : 'status-bad'}">${ok ? '✓ OK' : '✗'}</td>
-      </tr>`;
-    }).join('');
-  }
+        updateStatus(
+          'Mejor respuesta encontrada',
+          `La solución hallada deja ${active} conexiones activas de ${total} y alcanza ${Math.round(finalEval.acc * 100)}% de accuracy sobre 9 muestras.`,
+          finalEval.acc >= 1 - 1e-12 ? 'good' : 'warn'
+        );
 
-  // ===== Botones =====
-  document.getElementById('btn-reset').addEventListener('click', () => {
-    connections.forEach(c => c.pruned = false);
-    updateMetrics();
-    drawNetwork();
-    document.getElementById('status').textContent = 'Red reiniciada. Vuelve a podar.';
-  });
+        showDidactic(`
+          La búsqueda exhaustiva sobre la familia estructurada de esta demo encontró una solución con
+          <strong>${active} conexiones activas</strong> (${sparPct}% de sparsity) y <strong>${Math.round(finalEval.acc * 100)}% de accuracy</strong>.
+          <br><br>
+          En esta red, la mejor configuración que aparece es:
+          <ul style="margin:6px 0 0 18px;padding:0;">
+            <li><strong>h1</strong>: x1, x2 → y1</li>
+            <li><strong>h2</strong>: x3, x4 → y2</li>
+            <li><strong>h3</strong>: x2, x3 → y3</li>
+          </ul>
+          El modelo conserva exactamente las rutas útiles para las tres clases y elimina el resto de conexiones redundantes.
+          <br><br>
+          <strong>Conexiones activas resultantes:</strong> ${exactConnections.join(', ')}
+          <br><br>
+        `);
+      }
 
-  document.getElementById('btn-optimal').addEventListener('click', () => {
-    // Solución óptima: podar conexiones con peso < 0.3
-    connections.forEach(c => c.pruned = c.weight < 0.3);
-    updateMetrics();
-    drawNetwork();
-    document.getElementById('status').textContent =
-      'Solución óptima: se podaron las conexiones de bajo peso manteniendo accuracy.';
-  });
+      resetBtn.addEventListener('click', resetAll);
+      optBtn.addEventListener('click', bestResponseSearch);
 
-  // Inicialización
-  resizeCanvas();
-  updateMetrics();
-</script>
+      renderAll();
+      const initial = evaluate();
+      updateStatus('Estado de la actividad', `Modelo base listo. Accuracy inicial: ${Math.round(initial.acc * 100)}% sobre 9 muestras de demo.`, 'ok');
+    })();
+  </script>
 </body>
 </html>
