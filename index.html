@@ -45,16 +45,18 @@
     .legend{display:flex;flex-wrap:wrap;gap:8px;padding:10px 18px 12px}
     .legend span{border:1px solid var(--line);padding:6px 10px;border-radius:999px;background:#fff;font-size:.88rem}
     svg{display:block;width:100%;height:520px}
-    .edge{stroke-linecap:round;transition:.15s ease}
-    .edgeHit{cursor:pointer}
+    .edge{stroke-linecap:round;cursor:pointer;transition:.15s ease;pointer-events:none}
     .edge.pruned{stroke:#cbd5e1;stroke-dasharray:8 8;opacity:.82}
+    .edge-hit{stroke:transparent;fill:none;cursor:pointer;pointer-events:stroke;stroke-linecap:round}
+    @media (hover:none) and (pointer:coarse){
+      .edge-hit{stroke-width:24px}
+    }
     .weightTag{font-size:13px;font-weight:800;fill:#0f172a;paint-order:stroke;stroke:white;stroke-width:4px;stroke-linejoin:round;pointer-events:none}
     .node{fill:#f8fafc;stroke:#0f172a;stroke-width:2}
     .node.in{fill:#eef2ff}.node.hidden{fill:#ecfeff}.node.out{fill:#fef3c7}
     .nodeLabel{font-size:13px;font-weight:700;fill:#0f172a;pointer-events:none}
     .nodeSub{font-size:11px;fill:#475569;pointer-events:none}
     .overlayNote{position:absolute;right:14px;bottom:14px;max-width:380px;background:rgba(255,255,255,.94);border:1px solid rgba(15,23,42,.08);border-radius:14px;padding:10px 12px;box-shadow:0 8px 20px rgba(15,23,42,.08);font-size:.9rem}
-    svg{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
     .table{width:100%;border-collapse:collapse;margin-top:10px}
     .table th,.table td{border-bottom:1px solid var(--line);padding:9px 8px;text-align:left;font-size:.92rem}
     .table th{background:#f8fafc;position:sticky;top:0}
@@ -68,127 +70,7 @@
     .compactTitle{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:14px}
     .didactic{margin-top:12px;background:#fdf4ff;border:1px solid #f0abfc;border-radius:12px;padding:10px 12px;font-size:.92rem;color:#6b21a8}
     .didactic strong{color:#581c87}
-            @media (max-width: 900px){
-      .wrap{padding:12px}
-      .hero{padding:18px 16px;border-radius:20px;margin-bottom:12px}
-      .instructions{padding:14px 16px;margin-bottom:12px}
-      .card{padding:14px;border-radius:16px}
-      .layout{display:flex;flex-direction:column;gap:12px}
-      .layout > aside.card{order:-1;position:sticky;top:0;z-index:20;background:var(--panel);box-shadow:0 10px 24px rgba(15,23,42,.12);max-height:calc(100dvh - 12px);overflow:auto}
-      .compactTitle{margin-top:0}
-      .gridMetrics{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
-      .metric{padding:10px}
-      .metric .num{font-size:1.35rem}
-      .btn{padding:12px 16px;min-height:44px}
-      .topbar{gap:8px}
-      .networkWrap{min-height:480px;border-radius:16px}
-      .netHeader{padding:12px 14px 0}
-      .legend{padding:8px 14px 10px}
-      .legend span{font-size:.8rem;padding:5px 9px}
-      svg{height:430px}
-      .overlayNote{display:none}
-      .tableWrap{max-height:180px}
-      .didactic{font-size:.88rem}
-    }
-
-    @media (max-width: 700px){
-      .wrap{padding:12px}
-      .hero{padding:18px 16px;border-radius:20px}
-      .instructions{padding:14px 16px;border-radius:16px}
-      .card{padding:14px;border-radius:16px}
-      .layout{gap:12px}
-      .topbar{flex-direction:column;align-items:stretch}
-      .topbar > div:last-child{
-        width:100%;
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:8px;
-      }
-      .btn{width:100%;padding:12px 10px}
-      .networkWrap{min-height:auto;border-radius:16px}
-      .netHeader{padding:12px 12px 0}
-      .netHeader h3{font-size:1.02rem}
-      .netHeader p{font-size:.88rem}
-      .legend{padding:8px 12px 10px;gap:6px}
-      .legend span{font-size:.77rem;padding:5px 8px}
-      svg{height:430px}
-      .weightTag{font-size:11px}
-      .nodeLabel{font-size:11px}
-      .nodeSub{font-size:10px}
-      .overlayNote{
-        left:10px;
-        right:10px;
-        bottom:10px;
-        max-width:none;
-        font-size:.82rem;
-        padding:8px 10px;
-      }
-      .compactTitle{align-items:flex-start;flex-direction:column}
-      .gridMetrics{gap:8px}
-      .metric{padding:10px}
-      .metric .num{font-size:1.45rem}
-      .tableWrap{max-height:230px;overflow:auto}
-      .table{min-width:720px}
-      .table th,.table td{padding:8px 6px;font-size:.82rem;white-space:nowrap}
-      .status{padding:10px 12px}
-      .didactic{padding:9px 10px;font-size:.86rem}
-      .footer{font-size:.84rem}
-    }
-
-  
-    @media (max-width: 768px){
-      .wrap{padding:14px}
-      .hero{padding:18px 16px;border-radius:18px}
-      .hero h1{font-size:1.55rem}
-      .instructions{padding:14px 14px;border-radius:16px}
-      .instructions ol{margin-left:18px}
-      .card{padding:14px;border-radius:16px}
-      .topbar{align-items:flex-start}
-      .topbar > div:first-child{flex:1 1 100%}
-      .topbar > div:last-child{width:100%}
-      .topbar .btn{flex:1 1 calc(50% - 5px)}
-      .gridMetrics{grid-template-columns:1fr}
-      .metric .num{font-size:1.45rem}
-      .networkWrap{min-height:auto}
-      .netHeader{padding:12px 12px 0}
-      .netHeader h3{font-size:1rem}
-      .netHeader p{font-size:.86rem}
-      .legend{padding:8px 12px 10px;gap:6px}
-      .legend span{font-size:.8rem;padding:5px 8px}
-      svg{height:360px}
-      .overlayNote{
-        position:static;
-        margin:0 12px 12px;
-        max-width:none;
-        font-size:.84rem;
-      }
-      .compactTitle{align-items:flex-start;flex-direction:column}
-      .tableWrap{max-height:240px}
-      .table th,.table td{font-size:.84rem;padding:8px 6px}
-      .didactic{font-size:.86rem}
-      .status{padding:10px 12px}
-      .status strong{font-size:.94rem}
-      .status{font-size:.92rem}
-    }
-
-    @media (max-width: 480px){
-      .wrap{padding:10px}
-      .hero{padding:16px 14px}
-      .hero h1{font-size:1.35rem;line-height:1.2}
-      .instructions h2{font-size:1rem}
-      .instructions li{font-size:.94rem}
-      .topbar .btn{flex:1 1 100%}
-      .netHeader{padding:10px 10px 0}
-      .legend{padding:8px 10px 10px}
-      svg{height:320px}
-      .overlayNote{margin:0 10px 10px;padding:9px 10px}
-      .metric{padding:10px}
-      .metric .label{font-size:.84rem}
-      .metric .sub{font-size:.8rem}
-      .status{margin-top:10px}
-      .footer{font-size:.85rem}
-    }
-
+            @media (max-width: 900px){.gridMetrics{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -466,15 +348,13 @@
         connections.forEach(edge => {
           const a = posById[edge.from], b = posById[edge.to];
 
-          const hit = makeSvgEl('line', {
+          const hitLine = makeSvgEl('line', {
             x1:a.x, y1:a.y, x2:b.x, y2:b.y,
-            class:`edgeHit ${edge.pruned ? 'pruned' : ''}`,
+            class:'edge-hit',
             'data-id': edge.id
           });
-          hit.style.stroke = 'rgba(0,0,0,0)';
-          hit.style.strokeWidth = '30';
-          hit.style.pointerEvents = 'stroke';
-          hit.addEventListener('click', () => {
+          hitLine.style.strokeWidth = (strokeWidthForWeight(edge.weight) + 16) + 'px';
+          hitLine.addEventListener('click', () => {
             const before = evaluate();
             edge.pruned = !edge.pruned;
             const after = evaluate();
@@ -487,12 +367,11 @@
               edge.pruned ? 'warn' : 'ok'
             );
           });
-          edgesGroup.appendChild(hit);
+          edgesGroup.appendChild(hitLine);
 
           const line = makeSvgEl('line', { x1:a.x, y1:a.y, x2:b.x, y2:b.y, class:`edge ${edge.pruned ? 'pruned' : ''}` });
           line.style.stroke = edge.pruned ? '#cbd5e1' : colorForWeight(edge.weight);
           line.style.strokeWidth = strokeWidthForWeight(edge.weight);
-          line.style.pointerEvents = 'none';
           edgesGroup.appendChild(line);
 
           const p = labelPos(edge);
