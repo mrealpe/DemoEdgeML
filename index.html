@@ -67,6 +67,51 @@
     .didactic{margin-top:12px;background:#fdf4ff;border:1px solid #f0abfc;border-radius:12px;padding:10px 12px;font-size:.92rem;color:#6b21a8}
     .didactic strong{color:#581c87}
             @media (max-width: 900px){.gridMetrics{grid-template-columns:1fr}}
+
+    @media (max-width: 700px){
+      .wrap{padding:12px}
+      .hero{padding:18px 16px;border-radius:20px}
+      .instructions{padding:14px 16px;border-radius:16px}
+      .card{padding:14px;border-radius:16px}
+      .layout{gap:12px}
+      .topbar{flex-direction:column;align-items:stretch}
+      .topbar > div:last-child{
+        width:100%;
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:8px;
+      }
+      .btn{width:100%;padding:12px 10px}
+      .networkWrap{min-height:auto;border-radius:16px}
+      .netHeader{padding:12px 12px 0}
+      .netHeader h3{font-size:1.02rem}
+      .netHeader p{font-size:.88rem}
+      .legend{padding:8px 12px 10px;gap:6px}
+      .legend span{font-size:.77rem;padding:5px 8px}
+      svg{height:430px}
+      .weightTag{font-size:11px}
+      .nodeLabel{font-size:11px}
+      .nodeSub{font-size:10px}
+      .overlayNote{
+        left:10px;
+        right:10px;
+        bottom:10px;
+        max-width:none;
+        font-size:.82rem;
+        padding:8px 10px;
+      }
+      .compactTitle{align-items:flex-start;flex-direction:column}
+      .gridMetrics{gap:8px}
+      .metric{padding:10px}
+      .metric .num{font-size:1.45rem}
+      .tableWrap{max-height:230px;overflow:auto}
+      .table{min-width:720px}
+      .table th,.table td{padding:8px 6px;font-size:.82rem;white-space:nowrap}
+      .status{padding:10px 12px}
+      .didactic{padding:9px 10px;font-size:.86rem}
+      .footer{font-size:.84rem}
+    }
+
   
     @media (max-width: 768px){
       .wrap{padding:14px}
